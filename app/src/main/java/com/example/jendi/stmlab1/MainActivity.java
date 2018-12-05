@@ -75,6 +75,7 @@ class DrawView extends View {
                 while (it.hasNext()) {
                     Map.Entry pair = (Map.Entry) it.next();
                     Player temp = map.get(pair.getKey());
+                    int q = 17;
                     if ((int) event.getX((Integer) pair.getKey()) - 100 > 0 &&
                         (int) event.getX((Integer) pair.getKey()) + 100 < width) {
                         map.get(pair.getKey()).setPosX((int)event.getX((Integer) pair.getKey()));
