@@ -10,7 +10,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -21,9 +26,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        ConstraintLayout layout = findViewById(R.id.layout);
-        DrawView drawView = new DrawView(this);
-        layout.addView(drawView);
+        Button buttonServer = findViewById(R.id.buttonServer);
+        Button buttonClient = findViewById(R.id.buttonClient);
+        buttonServer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                ConstraintLayout layout = findViewById(R.id.layout);
+                DrawView drawView = new DrawView(getApplicationContext());
+                layout.addView(drawView);
+                view.setVisibility(View.INVISIBLE);
+                MainActivity.this.findViewById(R.id.buttonClient).setVisibility(View.INVISIBLE);
+            }
+        });
+        buttonClient.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                ConstraintLayout layout = findViewById(R.id.layout);
+                DrawView drawView = new DrawView(getApplicationContext());
+                layout.addView(drawView);
+                view.setVisibility(View.INVISIBLE);
+                MainActivity.this.findViewById(R.id.buttonServer).setVisibility(View.INVISIBLE);
+            }
+        });
+
+
     }
 }
 
