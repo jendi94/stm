@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
         Button buttonServer = findViewById(R.id.buttonServer);
         Button buttonClient = findViewById(R.id.buttonClient);
         EditText editText = findViewById(R.id.editText);
-        editText.setText("192.168.0.14");
+        editText.setText("172.20.10.6");
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         buttonServer.setOnClickListener(new View.OnClickListener() {
@@ -79,16 +79,18 @@ public class MainActivity extends AppCompatActivity {
 }
 
 class DrawView extends View {
-    int width, height, xCenter, yCenter, playerWidth, playerHeight, ballSize;
+    int width, height, xCenter, yCenter, playerWidth, playerHeight, ballSize, screenXCenter, screenYCenter;
     Paint backgroundPaint, elementPaint, textPaint;
-    Player enemyPlayer, myPlayer;
+    Player clientPlayer, serverPlayer;
     Client client;
     Server server;
-    boolean playerOneTouch, playerTwoTouch, isPlayerServer;
+    boolean isPlayerServer;
     Ball ball;
     boolean isSetup = true;
     HashMap<Integer, Player> map = new HashMap<>();
     SparseArray<Integer> activePointers;
+    private int screenWidth;
+    private int screenHeight;
 
     public DrawView(Context context, boolean isServer, String ip) throws UnknownHostException {
         super(context);
@@ -99,8 +101,6 @@ class DrawView extends View {
         textPaint = new Paint();
         textPaint.setARGB(255, 255, 255 ,255);
         textPaint.setTextSize(48);
-        playerOneTouch = false;
-        playerTwoTouch = false;
         activePointers = new SparseArray<>();
         isPlayerServer = isServer;
         if (isServer) {
@@ -115,60 +115,21 @@ class DrawView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-//        int pointerIndex = event.getActionIndex();
-//        int pointerId = event.getPointerId(pointerIndex);
-//        switch (event.getActionMasked()) {
-//
-//            case MotionEvent.ACTION_DOWN:
-//            case MotionEvent.ACTION_POINTER_DOWN:
-//                int touchX = (int) event.getX(pointerIndex);
-//                int touchY = (int) event.getY(pointerIndex);
-//
-//                if (isPlayerTouched(enemyPlayer, touchX, touchY)) {
-//                    map.put(pointerId, enemyPlayer);
-//                }
-//                if (isPlayerTouched(myPlayer, touchX ,touchY )) {
-//                    map.put(pointerId, myPlayer);
-//                }
-//                break;
-//            case MotionEvent.ACTION_MOVE:
-//                Iterator it = map.entrySet().iterator();
-//                while (it.hasNext()) {
-//                    Map.Entry pair = (Map.Entry) it.next();
-//                    if (event.getPointerCount() == 1 && (int)pair.getKey() == 1) {
-//                        //za duzo indeksow, olej indeks = 1
-//                    }
-//                    else if (event.getPointerCount() == 0) {
-//                        //nie ma juz indeksow, nie rob nic
-//                    }
-//                    else if ((int) event.getX((Integer) pair.getKey()) - 100 > 0 &&
-//                        (int) event.getX((Integer) pair.getKey()) + 100 < width) {
-//                        map.get(pair.getKey()).setPosX((int)event.getX((Integer) pair.getKey()));
-//                    }
-//                }
-//                break;
-//            case MotionEvent.ACTION_UP:
-//            case MotionEvent.ACTION_POINTER_UP:
-//            case MotionEvent.ACTION_CANCEL:
-//                map.remove(pointerId);
-//                break;
-//
-//
-//        }
-//        return true;
-
-        //kod dla klienta
         int pointerIndex = event.getActionIndex();
         int pointerId = event.getPointerId(pointerIndex);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_MOVE:
-                int touchX = (int) event.getX(pointerIndex);
-                int touchY = (int) event.getY(pointerIndex);
-
                 if ((event.getX() - 100) > 0 && (event.getX() + 100 < width)) {
-                    myPlayer.setPosX((int)event.getX());
-                    if (!isPlayerServer) {
-                        ClientState clientState = new ClientState(myPlayer.getPosX());
+                    if (isPlayerServer) {
+                        serverPlayer.setPosX((int)event.getX());
+                        ServerState serverState = new ServerState(serverPlayer.getPosX(),
+                                clientPlayer.getPosX(), ball.getPosX(), ball.getPosY(),
+                                serverPlayer.getScore(), clientPlayer.getScore());
+                        server.setServerState(serverState);
+                    }
+                    else {
+                        clientPlayer.setPosX((int)event.getX());
+                        ClientState clientState = new ClientState(clientPlayer.getPosX());
                         client.setClientState(clientState);
                     }
                 }
@@ -177,46 +138,41 @@ class DrawView extends View {
         return true;
     }
 
-    private boolean isPlayerTouched(Player player, int x, int y) {
-        int left = player.getRect().left;
-        int right = player.getRect().right;
-        int top = player.getRect().top;
-        int bottom = player.getRect().bottom;
-
-        if (left < x && right > x && y > (top-30) && y < (bottom+30)) {
-            return true;
-        }
-        return false;
-    }
-
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (isSetup) {
-            width = getWidth();
-            height = getHeight();
+            screenWidth = getWidth();
+            screenHeight = getHeight();
+            screenXCenter = getWidth()/2;
+            screenYCenter = getHeight()/2;
+            width = 1080;
+            height = 1620;
             ballSize = width/100;
             playerWidth = width/10;
             playerHeight = height/10;
             xCenter = width/2;
             yCenter = height/2;
-            enemyPlayer = new Player(xCenter, height/10, width, height);
-            myPlayer = new Player(xCenter, height - height/10, width, height);
+            clientPlayer = new Player(xCenter, height/10, width, height);
+            serverPlayer = new Player(xCenter, height - height/10, width, height);
             ball = new Ball(xCenter, yCenter, ballSize);
             if (isPlayerServer) {
-                server.setServerState(new ServerState(myPlayer.getPosX(), enemyPlayer.getPosX(),
-                        ball.getPosX(),ball.getPosY(), myPlayer.getScore(), enemyPlayer.getScore()));
+                server.setServerState(new ServerState(serverPlayer.getPosX(), clientPlayer.getPosX(),
+                        ball.getPosX(),ball.getPosY(), serverPlayer.getScore(), clientPlayer.getScore()));
             }
-            else client.setClientState(new ClientState(myPlayer.getPosX()));
+            else {
+                client.setClientState(new ClientState(clientPlayer.getPosX()));
+            }
             isSetup = false;
         }
+        canvas.translate((screenWidth-width)/2, (screenHeight-height)/2);
 
         //Tlo
         canvas.drawRect(0 ,0, width, height, backgroundPaint);
 
         //Paletki
-        canvas.drawRect(enemyPlayer.getRect(), elementPaint);
-        canvas.drawRect(myPlayer.getRect(), elementPaint);
+        canvas.drawRect(clientPlayer.getRect(), elementPaint);
+        canvas.drawRect(serverPlayer.getRect(), elementPaint);
 
         //Pilka
         canvas.drawRect(ball.getRect(), elementPaint);
@@ -224,10 +180,9 @@ class DrawView extends View {
         //Wynik
         canvas.save();
         canvas.rotate(-90, 10, height/2);
-        canvas.drawText(String.valueOf(myPlayer.getScore())+"    SCORE    " +
-                String.valueOf(enemyPlayer.getScore()),-50, (height/2)+40, textPaint);
+        canvas.drawText(String.valueOf(serverPlayer.getScore())+"    SCORE    " +
+                String.valueOf(clientPlayer.getScore()),-50, (height/2)+40, textPaint);
         canvas.restore();
-
         //Tutaj odswieza sie ekran
         invalidate();
     }
@@ -237,7 +192,7 @@ class DrawView extends View {
         if (isPlayerServer) {
             ClientState clientState = server.getClientState();
             if (clientState != null) {
-                enemyPlayer.setPosX(clientState.getX());
+                clientPlayer.setPosX(clientState.getX());
             }
             //Kolizja z ekranem
             int newPosX = ball.getPosX() + ball.getSpeed()*ball.getDirX();
@@ -250,34 +205,34 @@ class DrawView extends View {
             ball.setPosX(newPosX);
 
             //Obsluga Y
-            if (ball.getRect().intersect(enemyPlayer.getRect()) || ball.getRect().intersect(myPlayer.getRect())) {
+            if (ball.getRect().intersect(clientPlayer.getRect()) || ball.getRect().intersect(serverPlayer.getRect())) {
                 ball.setSpeed(ball.getSpeed() + 1);
                 ball.rebound();
                 ball.setPosY(ball.getPosY() + ball.getSpeed()*ball.getDirY());
             }
             else if (newPosY > height) {
-                //Wygrywa enemyPlayer
-                enemyPlayer.setScore(enemyPlayer.getScore()+1);
+                //Wygrywa clientPlayer
+                clientPlayer.setScore(clientPlayer.getScore()+1);
                 ball.resetBall(width, height);
             }
             else if (newPosY < 0) {
-                myPlayer.setScore(myPlayer.getScore()+1);
+                serverPlayer.setScore(serverPlayer.getScore()+1);
                 ball.resetBall(width, height);
             }
             else ball.setPosY(newPosY);
-            ServerState serverState = new ServerState(myPlayer.getPosX(), enemyPlayer.getPosX(),
-                    ball.getPosX(), ball.getPosY(), myPlayer.getScore(), enemyPlayer.getScore());
+            ServerState serverState = new ServerState(serverPlayer.getPosX(), clientPlayer.getPosX(),
+                    ball.getPosX(), ball.getPosY(), serverPlayer.getScore(), clientPlayer.getScore());
             server.setServerState(serverState);
         }
         else { //jestem klientem
             ServerState serverState = client.getServerState();
             if (serverState != null) {
-                myPlayer.setPosX(serverState.getClientX());
-                enemyPlayer.setPosX(serverState.getServerX());
+                serverPlayer.setPosX(serverState.getServerX());
+                clientPlayer.setPosX(serverState.getClientX());
                 ball.setPosX(serverState.getBallX());
                 ball.setPosY(serverState.getBallY());
-                myPlayer.setScore(serverState.getClientScore());
-                enemyPlayer.setScore(serverState.getServerScore());
+                serverPlayer.setScore(serverState.getServerScore());
+                clientPlayer.setScore(serverState.getClientScore());
             }
         }
         super.invalidate();
@@ -341,7 +296,7 @@ class Ball {
     private int posY;
     private int dirX = 1;
     private int dirY = 1;
-    private int speed = 1;
+    private int speed = 2;
     private int size;
 
     Ball(int x, int y, int size) {
@@ -410,7 +365,7 @@ class Ball {
         this.posY = y/2;
         this.dirX = 1;
         this.dirY = 1;
-        this.speed = 5;
+        this.speed = 2;
         refreshRect();
     }
 }
